@@ -152,135 +152,6 @@ function addStarBackground(scene, width, height, options = {}) {
     return starField;
 }
 
-// Modify the star background initialization to be more performance-aware
-function initializeStarBackground() {
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(
-        window.innerWidth / -2, window.innerWidth / 2, 
-        window.innerHeight / 2, window.innerHeight / -2, 
-        0.1, 1000
-    );
-    
-    // Only create renderer if canvas exists
-    const canvas = document.getElementById('star-background');
-    if (!canvas) return null;
-    
-    const renderer = new THREE.WebGLRenderer({ 
-        canvas: canvas, 
-        alpha: true,
-        powerPreference: 'low-power' // Prefer power efficiency
-    });
-    
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    
-    // Add error handling for WebGL context loss
-    renderer.domElement.addEventListener('webglcontextlost', function(event) {
-        event.preventDefault();
-        console.warn('WebGL context lost. Attempting to restore...');
-    }, false);
-    
-    // Create stars with reduced density on mobile
-    const isMobile = window.innerWidth <= 768;
-    const starBackground = addStarBackground(scene, window.innerWidth, window.innerHeight, {
-        starDensity: isMobile ? 50 : 35,
-        twinkleInterval: 20,
-        twinkleDuration: 1
-    });
-    
-    return { scene, camera, renderer, starBackground };
-}
-
-// Separate animation loops for stars and cards
-let starAnimationFrame;
-let cardAnimationFrame;
-
-function animateStars(renderer, scene, camera) {
-    starAnimationFrame = requestAnimationFrame(() => animateStars(renderer, scene, camera));
-    renderer.render(scene, camera);
-}
-
-function animateCards() {
-    if (isMobile) return; // Don't animate cards on mobile
-    
-    cardAnimationFrame = requestAnimationFrame(animateCards);
-    const containerRect = document.getElementById('team-members').getBoundingClientRect();
-
-    if (!isHovering) {
-        cards.forEach(card => {
-            // Update position
-            card.x += card.vx;
-            card.y += card.vy;
-
-            // Bounce off walls
-            if (card.x <= 0 || card.x + cardSize.width >= containerRect.width) {
-                card.vx *= -1;
-            }
-            if (card.y <= 0 || card.y + cardSize.height >= containerRect.height) {
-                card.vy *= -1;
-            }
-
-            // Check collisions with other cards
-            cards.forEach(otherCard => {
-                if (card !== otherCard) {
-                    if (isColliding(card, otherCard)) {
-                        // Simple collision response
-                        const tempVx = card.vx;
-                        const tempVy = card.vy;
-                        card.vx = otherCard.vx;
-                        card.vy = otherCard.vy;
-                        otherCard.vx = tempVx;
-                        otherCard.vy = tempVy;
-                    }
-                }
-            });
-
-            // Update card position
-            card.element.style.left = `${card.x}px`;
-            card.element.style.top = `${card.y}px`;
-        });
-    }
-}
-
-// Initialize everything with proper cleanup
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM fully loaded');
-    
-    // Initialize star background
-    const starSystem = initializeStarBackground();
-    if (starSystem) {
-        animateStars(starSystem.renderer, starSystem.scene, starSystem.camera);
-    }
-    
-    // Initialize team members
-    populateTeamMembers();
-    
-    // Start card animations if not mobile
-    if (!isMobile) {
-        animateCards();
-    }
-    
-    // Cleanup on page hide/unload
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            cancelAnimationFrame(starAnimationFrame);
-            cancelAnimationFrame(cardAnimationFrame);
-        } else {
-            if (starSystem) {
-                animateStars(starSystem.renderer, starSystem.scene, starSystem.camera);
-            }
-            if (!isMobile) {
-                animateCards();
-            }
-        }
-    });
-});
-
-// Memory cleanup
-window.addEventListener('beforeunload', () => {
-    cancelAnimationFrame(starAnimationFrame);
-    cancelAnimationFrame(cardAnimationFrame);
-});
-
 // Modify the existing Three.js setup
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(
@@ -301,12 +172,94 @@ let starBackground = addStarBackground(scene, window.innerWidth, window.innerHei
     twinkleDuration: 1 // Twinkle animation lasts 1 second
 });
 
+// Modify the initialization and animation code
+let animationFrame;
+let isAnimating = false;
+
 function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
+    if (!isAnimating) return;
+    
+    animationFrame = requestAnimationFrame(animate);
+    
+    // Render stars
+    if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+    }
+    
+    // Animate cards if not mobile and not hovering
+    if (!isMobile && !isHovering) {
+        const containerRect = document.getElementById('team-members')?.getBoundingClientRect();
+        if (containerRect && cards.length > 0) {
+            cards.forEach(card => {
+                // Update position
+                card.x += card.vx;
+                card.y += card.vy;
+
+                // Bounce off walls
+                if (card.x <= 0 || card.x + cardSize.width >= containerRect.width) {
+                    card.vx *= -1;
+                }
+                if (card.y <= 0 || card.y + cardSize.height >= containerRect.height) {
+                    card.vy *= -1;
+                }
+
+                // Update card position
+                if (card.element) {
+                    card.element.style.left = `${card.x}px`;
+                    card.element.style.top = `${card.y}px`;
+                }
+            });
+        }
+    }
 }
 
-animate();
+// Modify the initialization
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM fully loaded');
+    
+    // Initialize star background
+    const canvas = document.getElementById('star-background');
+    if (canvas) {
+        scene = new THREE.Scene();
+        camera = new THREE.OrthographicCamera(
+            window.innerWidth / -2, window.innerWidth / 2, 
+            window.innerHeight / 2, window.innerHeight / -2, 
+            0.1, 1000
+        );
+        
+        renderer = new THREE.WebGLRenderer({ 
+            canvas: canvas, 
+            alpha: true
+        });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        starBackground = addStarBackground(scene, window.innerWidth, window.innerHeight);
+    }
+    
+    // Initialize team members
+    populateTeamMembers();
+    
+    // Start animation
+    isAnimating = true;
+    animate();
+    
+    // Handle visibility changes
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            isAnimating = false;
+            cancelAnimationFrame(animationFrame);
+        } else {
+            isAnimating = true;
+            animate();
+        }
+    });
+});
+
+// Cleanup
+window.addEventListener('beforeunload', () => {
+    isAnimating = false;
+    cancelAnimationFrame(animationFrame);
+});
 
 // Handle window resize
 const debounce = (func, delay) => {
@@ -330,7 +283,7 @@ window.addEventListener('resize', debounce(() => {
     // Recreate star background on resize
     scene.remove(starBackground);
     starBackground = addStarBackground(scene, width, height);
-}, 250));
+}));
 
 const isMobile = window.innerWidth <= 48 * 16; // 48rem
 
@@ -502,6 +455,54 @@ function isOverlapping(position, existingCards) {
         position.y < card.y + cardSize.height &&
         position.y + cardSize.height > card.y
     );
+}
+
+function animateCards() {
+    const containerRect = document.getElementById('team-members').getBoundingClientRect();
+
+    if (!isHovering) {
+        cards.forEach(card => {
+            // Update position
+            card.x += card.vx;
+            card.y += card.vy;
+
+            // Bounce off walls
+            if (card.x <= 0 || card.x + cardSize.width >= containerRect.width) {
+                card.vx *= -1;
+            }
+            if (card.y <= 0 || card.y + cardSize.height >= containerRect.height) {
+                card.vy *= -1;
+            }
+
+            // Check collisions with other cards
+            cards.forEach(otherCard => {
+                if (card !== otherCard) {
+                    if (isColliding(card, otherCard)) {
+                        // Simple collision response
+                        const tempVx = card.vx;
+                        const tempVy = card.vy;
+                        card.vx = otherCard.vx;
+                        card.vy = otherCard.vy;
+                        otherCard.vx = tempVx;
+                        otherCard.vy = tempVy;
+                    }
+                }
+            });
+
+            // Update card position
+            card.element.style.left = `${card.x}px`;
+            card.element.style.top = `${card.y}px`;
+        });
+    }
+
+    requestAnimationFrame(animateCards);
+}
+
+function isColliding(card1, card2) {
+    return card1.x < card2.x + cardSize.width &&
+           card1.x + cardSize.width > card2.x &&
+           card1.y < card2.y + cardSize.height &&
+           card1.y + cardSize.height > card2.y;
 }
 
 function showMemberPopup(member) {
@@ -704,17 +705,6 @@ function setupNavButtons() {
     });
 }
 
-
-// Call setup functions after the DOM is fully loaded
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM fully loaded');
-    
-    setupNavButtons();
-    
-    console.log('Toggle nav button:', document.getElementById('toggle-nav'));
-    populateTeamMembers();
-});
-
 // Content data
 const pageContent = {
     mainTitle: "ABOUT TCIA",
@@ -788,38 +778,4 @@ function createPillars() {
 
 // Call the function to create pillars
 createPillars();
-
-// Add at the top of the file
-let isPerformanceDegraded = false;
-
-function checkPerformance() {
-    const performanceEntries = performance.getEntriesByType('frame');
-    if (performanceEntries.length > 10) {
-        const lastTenFrames = performanceEntries.slice(-10);
-        const averageFrameTime = lastTenFrames.reduce((sum, entry) => sum + entry.duration, 0) / 10;
-        
-        if (averageFrameTime > 50) { // More than 50ms per frame (less than 20fps)
-            isPerformanceDegraded = true;
-            // Disable animations and heavy features
-            disableHeavyFeatures();
-        }
-    }
-}
-
-function disableHeavyFeatures() {
-    // Disable star background
-    const starCanvas = document.getElementById('star-background');
-    if (starCanvas) {
-        starCanvas.style.display = 'none';
-    }
-    
-    // Disable card animations
-    cards.forEach(card => {
-        card.vx = 0;
-        card.vy = 0;
-    });
-    
-    // Show a message to the user
-    console.warn('Some animations have been disabled to improve performance');
-}
 

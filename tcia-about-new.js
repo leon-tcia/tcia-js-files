@@ -1,67 +1,67 @@
 // Add this to the top of your script, after importing Three.js
 function poissonDiskSampling(width, height, radius, k = 30) {
-    const grid = [];
-    const active = [];
-    const cellSize = radius / Math.sqrt(2);
-    const cols = Math.floor(width / cellSize);
-    const rows = Math.floor(height / cellSize);
+ const grid = [];
+const active = [];
+const cellSize = radius / Math.sqrt(2);
+const cols = Math.floor(width / cellSize);
+const rows = Math.floor(height / cellSize);
 
-    for (let i = 0; i < cols * rows; i++) {
-        grid[i] = undefined;
-    }
+for (let i = 0; i < cols * rows; i++) {
+    grid[i] = undefined;
+}
 
-    function addSample(sample) {
-        active.push(sample);
-        const i = Math.floor(sample.x / cellSize);
-        const j = Math.floor(sample.y / cellSize);
-        grid[i + j * cols] = sample;
-    }
+function addSample(sample) {
+    active.push(sample);
+    const i = Math.floor(sample.x / cellSize);
+    const j = Math.floor(sample.y / cellSize);
+    grid[i + j * cols] = sample;
+}
 
-    addSample({x: Math.random() * width, y: Math.random() * height});
+addSample({x: Math.random() * width, y: Math.random() * height});
 
-    while (active.length > 0) {
-        const randomIndex = Math.floor(Math.random() * active.length);
-        const point = active[randomIndex];
-        let found = false;
+while (active.length > 0) {
+    const randomIndex = Math.floor(Math.random() * active.length);
+    const point = active[randomIndex];
+    let found = false;
 
-        for (let n = 0; n < k; n++) {
-            const angle = Math.random() * Math.PI * 2;
-            const newRadius = radius + Math.random() * radius;
-            const newX = point.x + Math.cos(angle) * newRadius;
-            const newY = point.y + Math.sin(angle) * newRadius;
+    for (let n = 0; n < k; n++) {
+        const angle = Math.random() * Math.PI * 2;
+        const newRadius = radius + Math.random() * radius;
+        const newX = point.x + Math.cos(angle) * newRadius;
+        const newY = point.y + Math.sin(angle) * newRadius;
 
-            if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
-                let cellX = Math.floor(newX / cellSize);
-                let cellY = Math.floor(newY / cellSize);
-                let valid = true;
+        if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+            let cellX = Math.floor(newX / cellSize);
+            let cellY = Math.floor(newY / cellSize);
+            let valid = true;
 
-                for (let i = -1; i <= 1; i++) {
-                    for (let j = -1; j <= 1; j++) {
-                        const neighbor = grid[(cellX + i) + (cellY + j) * cols];
-                        if (neighbor) {
-                            const dx = neighbor.x - newX;
-                            const dy = neighbor.y - newY;
-                            if (dx * dx + dy * dy < radius * radius) {
-                                valid = false;
-                            }
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    const neighbor = grid[(cellX + i) + (cellY + j) * cols];
+                    if (neighbor) {
+                        const dx = neighbor.x - newX;
+                        const dy = neighbor.y - newY;
+                        if (dx * dx + dy * dy < radius * radius) {
+                            valid = false;
                         }
                     }
                 }
-
-                if (valid) {
-                    found = true;
-                    addSample({x: newX, y: newY});
-                    break;
-                }
             }
-        }
 
-        if (!found) {
-            active.splice(randomIndex, 1);
+            if (valid) {
+                found = true;
+                addSample({x: newX, y: newY});
+                break;
+            }
         }
     }
 
-    return grid.filter(point => point !== undefined);
+    if (!found) {
+        active.splice(randomIndex, 1);
+    }
+}
+
+return grid.filter(point => point !== undefined);
 }
 
 function addStarBackground(scene, width, height, options = {}) {
@@ -152,6 +152,7 @@ function addStarBackground(scene, width, height, options = {}) {
     return starField;
 }
 
+
 // Modify the existing Three.js setup
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(
@@ -164,124 +165,23 @@ camera.position.z = 1;
 const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('star-background'), alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 
-//let starBackground = addStarBackground(scene, window.innerWidth, window.innerHeight);
+// Comment out or remove the star background initialization
+// let starBackground = addStarBackground(scene, window.innerWidth, window.innerHeight, {
+//     twinkleInterval: 20, // Twinkle every 20 seconds
+//     twinkleDuration: 1 // Twinkle animation lasts 1 second
+// });
 
-// Usage
-let starBackground = addStarBackground(scene, window.innerWidth, window.innerHeight, {
-    twinkleInterval: 20, // Twinkle every 20 seconds
-    twinkleDuration: 1 // Twinkle animation lasts 1 second
-});
-
-// Modify the initialization and animation code
-let animationFrame;
-let isAnimating = false;
-
+// Modify the animate function to only handle card animations
 function animate() {
-    if (!isAnimating) {
-        console.log('Animation stopped');
-        return;
-    }
-    
-    animationFrame = requestAnimationFrame(animate);
-    
-    // Render stars
-    if (renderer && scene && camera) {
-        renderer.render(scene, camera);
-    } else {
-        console.warn('Missing required Three.js components');
-    }
-    
-    // Animate cards if not mobile and not hovering
-    if (!isMobile && !isHovering) {
-        const containerRect = document.getElementById('team-members')?.getBoundingClientRect();
-        if (containerRect && cards.length > 0) {
-            cards.forEach(card => {
-                // Update position
-                card.x += card.vx;
-                card.y += card.vy;
-
-                // Bounce off walls
-                if (card.x <= 0 || card.x + cardSize.width >= containerRect.width) {
-                    card.vx *= -1;
-                }
-                if (card.y <= 0 || card.y + cardSize.height >= containerRect.height) {
-                    card.vy *= -1;
-                }
-
-                // Update card position
-                if (card.element) {
-                    card.element.style.left = `${card.x}px`;
-                    card.element.style.top = `${card.y}px`;
-                }
-            });
-        } else {
-            console.warn('Container or cards not found:', {
-                containerExists: !!containerRect,
-                cardsLength: cards.length
-            });
-        }
-    }
+    requestAnimationFrame(animate);
+    // renderer.render(scene, camera); // Comment out star rendering
 }
 
-// Modify the initialization
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM fully loaded');
-    
-    // Add debug logging
-    console.log('Initializing page elements...');
-    
-    // Initialize star background
-    const canvas = document.getElementById('star-background');
-    console.log('Canvas element:', canvas);
-    
-    if (canvas) {
-        scene = new THREE.Scene();
-        camera = new THREE.OrthographicCamera(
-            window.innerWidth / -2, window.innerWidth / 2, 
-            window.innerHeight / 2, window.innerHeight / -2, 
-            0.1, 1000
-        );
-        camera.position.z = 1;  // Make sure camera position is set
-        
-        renderer = new THREE.WebGLRenderer({ 
-            canvas: canvas, 
-            alpha: true
-        });
-        
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        console.log('Three.js initialized');
-        
-        starBackground = addStarBackground(scene, window.innerWidth, window.innerHeight);
-        console.log('Star background added');
-    }
-    
-    // Initialize team members with debug logging
-    console.log('Starting team member initialization');
-    populateTeamMembers();
-    console.log('Team members populated, cards length:', cards.length);
-    
-    // Start animation
-    isAnimating = true;
-    animate();
-    console.log('Animation started');
-    
-    // Handle visibility changes
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            isAnimating = false;
-            cancelAnimationFrame(animationFrame);
-        } else {
-            isAnimating = true;
-            animate();
-        }
-    });
-});
-
-// Cleanup
-window.addEventListener('beforeunload', () => {
-    isAnimating = false;
-    cancelAnimationFrame(animationFrame);
-});
+// Optional: hide the canvas element
+const starCanvas = document.getElementById('star-background');
+if (starCanvas) {
+    starCanvas.style.display = 'none';
+}
 
 // Handle window resize
 const debounce = (func, delay) => {
@@ -305,7 +205,7 @@ window.addEventListener('resize', debounce(() => {
     // Recreate star background on resize
     scene.remove(starBackground);
     starBackground = addStarBackground(scene, width, height);
-}));
+}, 250));
 
 const isMobile = window.innerWidth <= 48 * 16; // 48rem
 
@@ -727,6 +627,17 @@ function setupNavButtons() {
     });
 }
 
+
+// Call setup functions after the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM fully loaded');
+    
+    setupNavButtons();
+    
+    console.log('Toggle nav button:', document.getElementById('toggle-nav'));
+    populateTeamMembers();
+});
+
 // Content data
 const pageContent = {
     mainTitle: "ABOUT TCIA",
@@ -800,4 +711,3 @@ function createPillars() {
 
 // Call the function to create pillars
 createPillars();
-

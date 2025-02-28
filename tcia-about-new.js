@@ -177,13 +177,18 @@ let animationFrame;
 let isAnimating = false;
 
 function animate() {
-    if (!isAnimating) return;
+    if (!isAnimating) {
+        console.log('Animation stopped');
+        return;
+    }
     
     animationFrame = requestAnimationFrame(animate);
     
     // Render stars
     if (renderer && scene && camera) {
         renderer.render(scene, camera);
+    } else {
+        console.warn('Missing required Three.js components');
     }
     
     // Animate cards if not mobile and not hovering
@@ -209,6 +214,11 @@ function animate() {
                     card.element.style.top = `${card.y}px`;
                 }
             });
+        } else {
+            console.warn('Container or cards not found:', {
+                containerExists: !!containerRect,
+                cardsLength: cards.length
+            });
         }
     }
 }
@@ -217,8 +227,13 @@ function animate() {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM fully loaded');
     
+    // Add debug logging
+    console.log('Initializing page elements...');
+    
     // Initialize star background
     const canvas = document.getElementById('star-background');
+    console.log('Canvas element:', canvas);
+    
     if (canvas) {
         scene = new THREE.Scene();
         camera = new THREE.OrthographicCamera(
@@ -226,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.innerHeight / 2, window.innerHeight / -2, 
             0.1, 1000
         );
+        camera.position.z = 1;  // Make sure camera position is set
         
         renderer = new THREE.WebGLRenderer({ 
             canvas: canvas, 
@@ -233,15 +249,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         renderer.setSize(window.innerWidth, window.innerHeight);
+        console.log('Three.js initialized');
+        
         starBackground = addStarBackground(scene, window.innerWidth, window.innerHeight);
+        console.log('Star background added');
     }
     
-    // Initialize team members
+    // Initialize team members with debug logging
+    console.log('Starting team member initialization');
     populateTeamMembers();
+    console.log('Team members populated, cards length:', cards.length);
     
     // Start animation
     isAnimating = true;
     animate();
+    console.log('Animation started');
     
     // Handle visibility changes
     document.addEventListener('visibilitychange', () => {

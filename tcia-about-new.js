@@ -210,7 +210,14 @@ function poissonDiskSampling(width, height, radius, k = 30) {
        starBackground = addStarBackground(scene, width, height);
    }, 250));
    
-   const isMobile = window.innerWidth <= 48 * 16; // 48rem
+   // Browser detection utility
+   function isEdgeBrowser() {
+       return navigator.userAgent.indexOf("Edge") > -1 || 
+              (navigator.userAgent.indexOf("Edg") > -1 && !navigator.userAgent.indexOf("Chrome"));
+   }
+   
+   // Check if mobile
+   const isMobile = window.innerWidth <= 768;
    
    // Team members data
    const teamMembers = [
@@ -261,55 +268,45 @@ function poissonDiskSampling(width, height, radius, k = 30) {
    const cards = [];
    let isHovering = false;
    
-   // Add this function at the beginning of the file
-   function isEdgeBrowser() {
-       // Check for both old Edge (EdgeHTML) and new Edge (Chromium)
-       return navigator.userAgent.indexOf("Edge") > -1 || 
-              (navigator.userAgent.indexOf("Edg") > -1 && !navigator.userAgent.indexOf("Chrome"));
-   }
-   
+   // Simplified team member population function
    function populateTeamMembers() {
        const teamMembersContainer = document.getElementById('team-members');
        if (!teamMembersContainer) {
            console.error('Team members container not found');
            return;
        }
-       console.log('Populating team members');
-   
-       // Check if running in Edge browser
-       const isEdge = isEdgeBrowser();
-       if (isEdge) {
-           // Apply simplified layout for Edge
-           teamMembersContainer.style.display = 'flex';
-           teamMembersContainer.style.flexWrap = 'wrap';
-           teamMembersContainer.style.justifyContent = 'center';
-           teamMembersContainer.style.gap = '20px';
-           teamMembersContainer.style.padding = '20px';
-           teamMembersContainer.style.height = 'auto';
-       }
-   
+
+       // Always use horizontal scrolling layout
+       teamMembersContainer.style.display = 'flex';
+       teamMembersContainer.style.overflowX = 'auto';
+       teamMembersContainer.style.scrollSnapType = 'x mandatory';
+       teamMembersContainer.style.scrollBehavior = 'smooth';
+       teamMembersContainer.style.WebkitOverflowScrolling = 'touch';
+       teamMembersContainer.style.padding = '20px';
+       teamMembersContainer.style.gap = '20px';
+       teamMembersContainer.style.height = 'auto';
+       teamMembersContainer.style.position = 'relative';
+
        teamMembers.forEach((member, index) => {
            const memberElement = document.createElement('div');
            memberElement.classList.add('team-member-card');
            
-           if (member.role === "TCIA Board Member") {
+           if (member.role.includes("Board Member")) {
                memberElement.classList.add('board-member');
            }
-   
-           // Apply simplified styles for Edge
-           if (isEdge) {
-               memberElement.style.position = 'relative';
-               memberElement.style.margin = '10px';
-               memberElement.style.transform = 'none';
-               // Remove any floating animation related styles
-               memberElement.style.left = 'auto';
-               memberElement.style.top = 'auto';
-           }
+
+           // Use static positioning for all devices
+           memberElement.style.position = 'relative';
+           memberElement.style.flex = '0 0 auto';
+           memberElement.style.scrollSnapAlign = 'center';
+           memberElement.style.transform = 'none';
+           memberElement.style.left = 'auto';
+           memberElement.style.top = 'auto';
            
            memberElement.innerHTML = `
                <div class="card-inner">
                    <div class="card-front">
-                       <img src="${member.image}" alt="${member.name}" class="member-image">
+                       <img src="${member.image}" alt="${member.name}" class="member-image" loading="lazy">
                        <div class="member-name">${member.name}</div>
                    </div>
                    <div class="card-back">
@@ -320,125 +317,29 @@ function poissonDiskSampling(width, height, radius, k = 30) {
            `;
            teamMembersContainer.appendChild(memberElement);
        });
-   
-       // Only set up animation and card movement for non-Edge browsers
-       if (!isEdge && !isMobile) {
-           // Set up card positions and animations
-           teamMembers.forEach((_, index) => {
-               const memberElement = teamMembersContainer.children[index];
-               let position;
-               do {
-                   position = getRandomPosition(teamMembersContainer.getBoundingClientRect());
-               } while (isOverlapping(position, cards));
-   
-               memberElement.style.left = `${position.x}px`;
-               memberElement.style.top = `${position.y}px`;
-   
-               const card = {
-                   element: memberElement,
-                   x: position.x,
-                   y: position.y,
-                   vx: (Math.random() - 0.5) * 0.5,
-                   vy: (Math.random() - 0.5) * 0.5
-               };
-   
-               cards.push(card);
-           });
-   
-           requestAnimationFrame(animateCards);
-       }
-   
-       // Event handlers remain the same
+
+       // Event handlers for popup
        teamMembersContainer.addEventListener('mouseenter', (event) => {
            if (event.target.closest('.team-member-card')) {
-               isHovering = true;
                event.target.closest('.team-member-card').classList.add('glow');
            }
        }, true);
-   
+
        teamMembersContainer.addEventListener('mouseleave', (event) => {
            if (event.target.closest('.team-member-card')) {
-               isHovering = false;
                event.target.closest('.team-member-card').classList.remove('glow');
            }
        }, true);
-   
+
        teamMembersContainer.addEventListener('click', (event) => {
            const cardBack = event.target.closest('.card-back');
            if (cardBack) {
                event.preventDefault();
                event.stopPropagation();
-               console.log('Card back clicked');
                const memberIndex = Array.from(teamMembersContainer.children).indexOf(cardBack.closest('.team-member-card'));
                showMemberPopup(teamMembers[memberIndex]);
            }
        });
-   }
-   
-   function getRandomPosition(containerRect) {
-       const x = Math.random() * (containerRect.width - cardSize.width);
-       const y = Math.random() * (containerRect.height - cardSize.height);
-       return { x, y };
-   }
-   
-   function isOverlapping(position, existingCards) {
-       return existingCards.some(card => 
-           position.x < card.x + cardSize.width &&
-           position.x + cardSize.width > card.x &&
-           position.y < card.y + cardSize.height &&
-           position.y + cardSize.height > card.y
-       );
-   }
-   
-   function animateCards() {
-       // Don't animate if in Edge browser
-       if (isEdgeBrowser()) return;
-   
-       const containerRect = document.getElementById('team-members').getBoundingClientRect();
-   
-       if (!isHovering) {
-           cards.forEach(card => {
-               // Update position
-               card.x += card.vx;
-               card.y += card.vy;
-   
-               // Bounce off walls
-               if (card.x <= 0 || card.x + cardSize.width >= containerRect.width) {
-                   card.vx *= -1;
-               }
-               if (card.y <= 0 || card.y + cardSize.height >= containerRect.height) {
-                   card.vy *= -1;
-               }
-   
-               // Check collisions with other cards
-               cards.forEach(otherCard => {
-                   if (card !== otherCard) {
-                       if (isColliding(card, otherCard)) {
-                           // Simple collision response
-                           const tempVx = card.vx;
-                           const tempVy = card.vy;
-                           card.vx = otherCard.vx;
-                           card.vy = otherCard.vy;
-                           otherCard.vx = tempVx;
-                           otherCard.vy = tempVy;
-                       }
-                   }
-               });
-   
-               // Update card position
-               card.element.style.left = `${card.x}px`;
-               card.element.style.top = `${card.y}px`;
-           });
-       }
-   
-       requestAnimationFrame(animateCards);
-   }
-   
-   function isColliding(card1, card2) {
-       return card1.x < card2.x + cardSize.width &&
-              card1.x + cardSize.width > card2.x &&
-              card1.y < card2.y + cardSize.height &&
-              card1.y + cardSize.height > card2.y;
    }
    
    function showMemberPopup(member) {
@@ -451,7 +352,7 @@ function poissonDiskSampling(width, height, radius, k = 30) {
        const popupSpecialty = popup.querySelector('.popup-specialty');
        const popupBio = popup.querySelector('.popup-bio');
        const popupBioContainer = popup.querySelector('.popup-bio-container');
-   
+
        popupImage.src = member.image;
        popupName.textContent = member.name;
        popupCodename.textContent = member.codename || 'N/A';
@@ -459,9 +360,8 @@ function poissonDiskSampling(width, height, radius, k = 30) {
        popupSpecialty.textContent = member.specialty || 'N/A';
        
        if (member.bio && member.bio.trim() !== '') {
-           // Support for multiple paragraphs in bio with drop caps
            popupBio.innerHTML = member.bio.split('\n').map(paragraph => {
-               if (paragraph.trim() === '') return ''; // Skip empty paragraphs
+               if (paragraph.trim() === '') return '';
                const firstLetter = paragraph.charAt(0);
                const restOfParagraph = paragraph.slice(1);
                return `<p><span class="drop-cap">${firstLetter}</span>${restOfParagraph}</p>`;
@@ -470,186 +370,38 @@ function poissonDiskSampling(width, height, radius, k = 30) {
        } else {
            popupBioContainer.style.display = 'none';
        }
-   
-       // Show the popup
+
        popup.style.display = 'flex';
-       // Trigger reflow
        void popup.offsetWidth;
        popup.classList.add('show');
    }
    
-   // Function to close the popup
    function closeMemberPopup() {
        const popup = document.getElementById('member-popup');
        popup.classList.remove('show');
-       // Wait for the transition to finish before hiding the popup
        setTimeout(() => {
            popup.style.display = 'none';
-       }, 300); // This should match the transition duration
+       }, 300);
    }
    
-   // Use event delegation for closing popup
-   document.addEventListener('click', (event) => {
-       const popup = document.getElementById('member-popup');
-       if (event.target.classList.contains('close') || event.target === popup) {
-           closeMemberPopup();
-       }
-   });
-   
-   // Prevent closing when clicking inside the popup content
-   document.querySelector('.popup-content').addEventListener('click', (event) => {
-       event.stopPropagation();
-   });
-   
-   // Add this new event listener for the close button
-   document.querySelector('.close').addEventListener('click', (event) => {
-       event.preventDefault();
-       event.stopPropagation();
-       closeMemberPopup();
-   });
-   
-   // Function to animate elements
+   // Simplified animation function
    function animateElement(element, delay = 0) {
        gsap.fromTo(element, 
-           {
-               opacity: 0,
-               y: 50,
-           },
-           {
-               opacity: 1,
-               y: 0,
-               duration: 0.75,
-               delay: delay,
-               ease: "power3.out",
-           }
+           { opacity: 0, y: 20 },
+           { opacity: 1, y: 0, duration: 0.5, delay: delay, ease: "power2.out" }
        );
    }
    
-   // Set up Intersection Observer for all elements
+   // Set up Intersection Observer for elements
    const observer = new IntersectionObserver((entries) => {
        entries.forEach(entry => {
            if (entry.isIntersecting) {
-               const element = entry.target;
-               if (element.classList.contains('team-member')) {
-                   const index = Array.from(element.parentNode.children).indexOf(element);
-                   animateTeamMember(element, index);
-               } else {
-                   animateElement(element);
-               }
-               observer.unobserve(element); // Stop observing after animation
+               animateElement(entry.target);
+               observer.unobserve(entry.target);
            }
        });
    }, {
-       root: null,
-       rootMargin: '0px',
-       threshold: 0.8 // Trigger when 80% of the element is visible
-   });
-   
-   // Observe each element
-   const elementsToAnimate = [
-       '#who-we-are-title',
-       '#who-we-are-statement',
-       '#who-we-are-statement-2',
-       '#mission-title',
-       '#mission-statement',
-       '#org-quote',
-       '#org-pillars',
-       '#team-heading'
-   ];
-   
-   elementsToAnimate.forEach((selector) => {
-       const element = document.querySelector(selector);
-       if (element) {
-           gsap.set(element, { opacity: 0, visibility: 'visible' });
-           observer.observe(element);
-       }
-   });
-   
-   // Observe team members
-   document.querySelectorAll('.team-member').forEach((element) => {
-       gsap.set(element, { opacity: 0, visibility: 'visible' });
-       observer.observe(element);
-   });
-   
-   // Animations for titles and statements
-   gsap.to("#main-title", { opacity: 1, duration: 1, delay: 0.8 });
-   
-   // Function to animate team member
-   function animateTeamMember(element, index) {
-       gsap.fromTo(element, 
-           {
-               opacity: 0,
-               x: index % 2 === 0 ? '200%' : '-200%',
-               scale: 0.1,
-           },
-           {
-               opacity: 1,
-               x: 0,
-               scale: 1,
-               duration: 0.75,
-               ease: "power3.out",
-           }
-       );
-   }
-   
-   // Function to toggle nav overlay
-   function toggleNavOverlay() {
-       const navOverlay = document.getElementById('nav-overlay');
-       if (navOverlay) {
-           navOverlay.classList.toggle('show');
-           adjustNavButtonWidth();
-       }
-   }
-   
-   function adjustNavButtonWidth() {
-       const navOverlay = document.getElementById('nav-overlay');
-       const navButtons = document.querySelectorAll('.nav-button');
-       const isShown = navOverlay.classList.contains('show');
-       
-       navButtons.forEach(button => {
-           if (isShown) {
-               button.style.width = '100%';
-               button.style.fontSize = 'inherit';
-           } else {
-               button.style.width = '40px'; // Adjust this value as needed
-               button.style.fontSize = '0';
-           }
-       });
-   }
-   
-   // Call adjustNavButtonWidth on page load
-   document.addEventListener('DOMContentLoaded', adjustNavButtonWidth);
-   
-   // Function to scroll to a section
-   function scrollToSection(sectionId) {
-       const section = document.getElementById(sectionId);
-       if (section) {
-           section.scrollIntoView({ behavior: 'smooth' });
-           toggleNavOverlay(); // Close the nav overlay after clicking a button
-       }
-   }
-   
-   // Function to setup nav buttons
-   function setupNavButtons() {
-       const navButtons = document.querySelectorAll('.nav-button');
-       navButtons.forEach(button => {
-           button.addEventListener('click', () => {
-               const sectionId = button.getAttribute('data-section');
-               console.log(`Nav button clicked: ${sectionId}`);
-               scrollToSection(sectionId);
-           });
-       });
-   }
-   
-   
-   // Call setup functions after the DOM is fully loaded
-   document.addEventListener('DOMContentLoaded', () => {
-       console.log('DOM fully loaded');
-       
-       setupNavButtons();
-       
-       console.log('Toggle nav button:', document.getElementById('toggle-nav'));
-       populateTeamMembers();
+       threshold: 0.2
    });
    
    // Content data
@@ -678,8 +430,68 @@ function poissonDiskSampling(width, height, radius, k = 30) {
        document.getElementById('team-heading').textContent = pageContent.teamHeading;
    }
    
-   // Call the function to insert content
-   insertContent();
+   // Function to setup nav buttons
+   function setupNavButtons() {
+       const navButtons = document.querySelectorAll('.nav-button');
+       navButtons.forEach(button => {
+           button.addEventListener('click', () => {
+               const sectionId = button.getAttribute('data-section');
+               const section = document.getElementById(sectionId);
+               if (section) {
+                   section.scrollIntoView({ behavior: 'smooth' });
+                   document.getElementById('nav-overlay').classList.remove('show');
+               }
+           });
+       });
+   }
+   
+   // Initialize everything when DOM is loaded
+   document.addEventListener('DOMContentLoaded', () => {
+       // Insert content
+       insertContent();
+       
+       // Setup navigation
+       setupNavButtons();
+       
+       // Populate team members
+       populateTeamMembers();
+       
+       // Setup popup close handlers
+       document.addEventListener('click', (event) => {
+           if (event.target.classList.contains('close') || 
+               event.target === document.getElementById('member-popup')) {
+               closeMemberPopup();
+           }
+       });
+       
+       document.querySelector('.popup-content').addEventListener('click', (event) => {
+           event.stopPropagation();
+       });
+       
+       document.querySelector('.close').addEventListener('click', closeMemberPopup);
+       
+       // Observe elements for animation
+       const elementsToAnimate = [
+           '#who-we-are-title',
+           '#who-we-are-statement',
+           '#who-we-are-statement-2',
+           '#mission-title',
+           '#mission-statement',
+           '#org-quote',
+           '#team-heading'
+       ];
+       
+       elementsToAnimate.forEach(selector => {
+           const element = document.querySelector(selector);
+           if (element) {
+               gsap.set(element, { opacity: 0 });
+               observer.observe(element);
+           }
+       });
+       
+       // Simple fade-in for main title
+       gsap.to("#main-title", { opacity: 1, duration: 0.8 });
+   });
    
    // TCIA colors
    const tciaColors = [
@@ -696,9 +508,11 @@ function poissonDiskSampling(width, height, radius, k = 30) {
    
    function createPillars() {
        const orbitElement = document.getElementById('org-pillars');
+       if (!orbitElement) return;
+       
        const totalPillars = orgPillars.length;
-       const radius = 250; // Adjust this value to change the circle size
-   
+       const radius = 250;
+
        orgPillars.forEach((pillar, index) => {
            const pillarElement = document.createElement('div');
            pillarElement.classList.add('pillar');
@@ -708,20 +522,16 @@ function poissonDiskSampling(width, height, radius, k = 30) {
            pillarText.textContent = pillar;
            
            pillarElement.appendChild(pillarText);
-   
-           // Position the pillar
+
            const angle = (index / totalPillars) * 2 * Math.PI;
            const x = radius * Math.cos(angle);
            const y = radius * Math.sin(angle);
-   
+
            pillarElement.style.left = `${x + 300}px`;
            pillarElement.style.top = `${y + 300}px`;
            pillarElement.style.transform = 'translate(-50%, -50%)';
            pillarElement.style.backgroundColor = tciaColors[index % tciaColors.length];
-   
+
            orbitElement.appendChild(pillarElement);
        });
    }
-   
-   // Call the function to create pillars
-   createPillars();

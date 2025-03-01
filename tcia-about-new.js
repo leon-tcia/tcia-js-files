@@ -388,8 +388,8 @@ function isOverlapping(position, existingCards) {
 }
 
 // Add these variables at the top of your script
-let lastFrame = 0;
-const FRAME_LIMIT = 1000 / 30; // Limit to 30 FPS
+//let lastFrame = 0;
+//const FRAME_LIMIT = 1000 / 30; // Limit to 30 FPS
 
 function animateCards(timestamp) {
     // Skip frames to reduce CPU usage

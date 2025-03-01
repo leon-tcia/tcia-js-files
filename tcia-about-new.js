@@ -1,4 +1,4 @@
-// Add this to the top of your script, after importing Three.js
+// Add this to the top of script, after importing Three.js
 function poissonDiskSampling(width, height, radius, k = 30) {
     const grid = [];
    const active = [];
@@ -452,6 +452,11 @@ function poissonDiskSampling(width, height, radius, k = 30) {
        
        // Setup navigation
        setupNavButtons();
+       
+       // Create pillars if not on mobile
+       if (!isMobile) {
+           createPillars();
+       }
        
        // Populate team members
        populateTeamMembers();
